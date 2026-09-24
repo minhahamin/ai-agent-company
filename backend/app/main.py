@@ -11,6 +11,7 @@ from .schemas import TaskCreate, TaskResult, AgentEvent, AgentInfo
 from .agents import ROLES
 from .graph import run_company
 from .llm import get_mode
+from . import llm as llm_state
 from . import db as store
 
 app = FastAPI(title="AI Agent Company", version="0.1.0")
@@ -29,7 +30,7 @@ TASKS: dict[str, TaskResult] = {}
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "llm_mode": get_mode(), "db": "postgres" if store.USE_DB else "memory"}
+    return {"ok": True, "llm_mode": get_mode(), "model": llm_state.last_model or None, "db": "postgres" if store.USE_DB else "memory"}
 
 
 @app.get("/api/agents", response_model=list[AgentInfo])
