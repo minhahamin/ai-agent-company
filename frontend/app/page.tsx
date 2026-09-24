@@ -14,11 +14,9 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [task, setTask] = useState<Task | null>(null);
   const [active, setActive] = useState(0);
-  const [health, setHealth] = useState("");
 
   useEffect(() => {
     fetch(`${API}/api/agents`).then((r) => r.json()).then(setAgents).catch(() => {});
-    fetch(`${API}/api/health`).then((r) => r.json()).then((h) => setHealth(`backend OK · llm=${h.llm_mode}`)).catch(() => setHealth("backend OFFLINE — `uvicorn app.main:app` 실행 필요"));
   }, []);
 
   async function run() {
@@ -47,9 +45,8 @@ export default function Page() {
     <div className="container">
       <div className="header">
         <h1 style={{ margin: 0 }}>🏢 AI Agent Company</h1>
-        <span className="badge">{health || "connecting..."}</span>
       </div>
-      <p className="small">CEO → Planner → Developer → Reviewer → Reporter 순서로 LangGraph가 협업합니다. API 키 없이도 MOCK 모드로 바로 데모 가능합니다.</p>
+      <p className="small">CEO → Planner → Developer → Reviewer → Reporter 순서로 LangGraph가 협업합니다.</p>
 
       <div className="grid" style={{ marginTop: 16 }}>
         <div className="card">

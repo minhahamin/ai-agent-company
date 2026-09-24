@@ -6,7 +6,19 @@
 Developer가 초안을 쓰고, Reviewer가 검토하고(미흡하면 재작업 지시), Reporter가 최종 보고서를 정리합니다.
 전체 과정은 LangGraph 상태 그래프로 오케스트레이션되며, Next.js 대시보드에서 단계별 출력을 실시간으로 확인할 수 있습니다.
 
+## 🌐 라이브 서비스 (Railway 배포)
+
+| 서비스 | URL |
+| --- | --- |
+| 🏠 홈페이지 (Frontend) | https://ai-agent-company-production.up.railway.app |
+| ⚙️ API (Backend) | https://backend-production-dc13.up.railway.app (`/api/health`로 상태 확인) |
+| 🗄 DB | Railway Postgres (`tasks` 테이블에 작업 영속화) |
+
+실모델(OpenRouter) + Postgres가 연결된 상태로 바로 시연 가능합니다.
+
 ## 📌 목차
+
+- [라이브 서비스](#-라이브-서비스-railway-배포)
 
 - [주요 기능](#-주요-기능)
 - [기술 스택](#-기술-스택)
@@ -86,8 +98,8 @@ Browser (Next.js)        FastAPI (/api/tasks)        LangGraph          LLM/MOCK
 1. **동기 실행 + 결과 반환**: 에이전트 파이프라인이 수 초 내로 끝나므로(특히 MOCK 모드),
    WebSocket/SSE 없이 `POST /api/tasks` 한 번으로 전체 협업을 실행하고 결과를 반환합니다.
    구조가 단순해 디버깅과 포트폴리오 시연에 유리합니다.
-2. **LLM 추상화 (`llm.py`)**: `LLM_MODE=auto`면 API 키 존재 여부로 OpenAI/MOCK을 자동 선택합니다.
-   노드 코드는 `chat(prompt, system)` 하나만 호출하므로, Claude·Gemini 추가도 이 함수만 확장하면 됩니다.
+2. **LLM 추상화 (`llm.py`)**: `LLM_MODE=auto`면 키 존재 여부로 OpenRouter → OpenAI → MOCK 순으로 자동 선택합니다.
+   노드 코드는 `chat(prompt, system)` 하나만 호출하므로, 모델 교체는 환경 변수만 바꾸면 됩니다.
 3. **DB 이중화 (`db.py`)**: `DATABASE_URL`이 있으면 Postgres 영속화, 없으면 인메모리 dict.
    로컬에서는 설정 없이 실행되고, Railway에서는 Postgres 플러그인 연결만으로 저장소가 전환됩니다.
 4. **`NEXT_PUBLIC_*` 빌드 시점 주입**: Next.js는 public 환경 변수를 빌드 타임에 고정하므로,
@@ -186,7 +198,7 @@ Postgres 테이블(`tasks`): `id PK, goal TEXT, status VARCHAR, events JSON, fin
 Set-Location backend
 python -m venv .venv; .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-Copy-Item .env.example .env   # OPENAI_API_KEY 넣으면 실모델, 비워두면 MOCK
+Copy-Item .env.example .env   # OPENROUTER_API_KEY 넣으면 실모델, 비워두면 MOCK
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -205,9 +217,11 @@ npm run dev
 
 | 변수 | 위치 | 필수 | 설명 |
 | --- | --- | --- | --- |
-| `OPENAI_API_KEY` | backend | 선택 | 있으면 OpenAI 실모델, 없으면 MOCK 모드 |
+| `OPENROUTER_API_KEY` | backend | 선택(배포시 설정됨) | 있으면 OpenRouter 실모델, 없으면 MOCK 모드 |
+| `OPENROUTER_MODEL` | backend | 선택 | 기본 `openai/gpt-4o-mini` (예: `anthropic/claude-3.5-sonnet`) |
+| `OPENAI_API_KEY` | backend | 선택 | OpenRouter 키가 없을 때 직접 OpenAI 사용 |
 | `OPENAI_MODEL` | backend | 선택 | 기본 `gpt-4o-mini` |
-| `LLM_MODE` | backend | 선택 | `auto`(기본) / `openai` / `mock` |
+| `LLM_MODE` | backend | 선택 | `auto`(기본) / `openrouter` / `openai` / `mock` |
 | `DATABASE_URL` | backend | 선택(Railway 자동주입) | 있으면 Postgres 저장, 없으면 인메모리 |
 | `FRONTEND_URL` | backend | 선택 | CORS 허용 오리진 |
 | `TAVILY_API_KEY` | backend | 선택 | 있으면 Planner가 실웹검색 사용 |
@@ -229,8 +243,8 @@ npm run dev
 
 | 서비스 | Root Directory | 빌드/시작 | 환경 변수 |
 | --- | --- | --- | --- |
-| backend | `backend` | Nixpacks, `uvicorn app.main:app --host 0.0.0.0 --port $PORT` | `OPENAI_API_KEY`(선택), `DATABASE_URL`(Postgres 참조) |
-| frontend | `frontend` | `npm run build` → `npm start -- -p $PORT` | `NEXT_PUBLIC_API_URL`=(backend 도메인) |
+| backend | `backend` | Nixpacks, `uvicorn app.main:app --host 0.0.0.0 --port $PORT` | `OPENROUTER_API_KEY`(실모델), `DATABASE_URL`(Postgres 참조) |
+| ai-agent-company (homepage) | `frontend` | `npm run build` → `npm start -- -p $PORT` | `NEXT_PUBLIC_API_URL`=(backend 도메인) |
 | postgres | — | Railway Postgres 플러그인 | `DATABASE_URL` 자동 생성 |
 
 배포 순서가 중요한 이유: `NEXT_PUBLIC_API_URL`은 Next.js 빌드 타임에 번들에 고정되므로
