@@ -2,7 +2,7 @@
 
 The CEO picks which optional roles are needed; the rest are skipped."""
 import re
-from typing import TypedDict, List, Dict, Any
+from typing import TypedDict, List, Dict, Any, Optional
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, END
 from langgraph.types import Command, interrupt
@@ -46,13 +46,32 @@ def normalize_roles(picked) -> List[str]:
     return roles
 
 
-def parse_roles(text: str) -> List[str]:
-    """Read the CEO's trailing 'ROLES: a, b' line. Unparseable -> all roles."""
+def find_roles(text: str) -> Optional[List[str]]:
+    """Read a 'ROLES: a, b' line. None if there is no such line."""
     found = re.findall(r"ROLES\s*[:：]\s*(.+)", text, flags=re.IGNORECASE)
     if not found:
-        return list(OPTIONAL_ROLES)
+        return None
     picked = {t.strip().lower() for t in re.split(r"[,\s]+", found[-1]) if t.strip()}
     return normalize_roles(picked)
+
+
+def parse_roles(text: str) -> List[str]:
+    """Unparseable -> all roles."""
+    roles = find_roles(text)
+    return list(OPTIONAL_ROLES) if roles is None else roles
+
+
+def _ask_roles(goal: str, ceo_text: str) -> Optional[List[str]]:
+    """Free models often forget the ROLES line; ask once more with a tiny, single-purpose prompt."""
+    out = chat(
+        f"목표: {goal}\n\n계획:\n{ceo_text[:1500]}\n\n"
+        "이 목표를 끝내는 데 꼭 필요한 역할만 고르세요. 선택지: planner(일정/계획 수립), "
+        "developer(코드나 긴 문서 산출물 작성), reviewer(산출물 품질 검토; developer가 있을 때만). "
+        "비교·추천·요약처럼 코드나 문서 산출물이 필요 없는 일은 developer와 reviewer를 넣지 마세요. "
+        "다른 설명 없이 한 줄로만 답하세요. 예: `ROLES: planner` 또는 `ROLES: planner, developer, reviewer` 또는 `ROLES: none`",
+        system="You classify which roles a task needs. Reply with exactly one line starting with ROLES:.",
+    )
+    return find_roles(out)
 
 
 def _strip_roles_line(text: str) -> str:
@@ -73,7 +92,13 @@ def ceo_node(state: CompanyState):
         "(선택지: planner, developer, reviewer. 불필요한 역할은 빼세요. 예: 코드/문서 산출물이 필요 없으면 developer와 reviewer 제외).",
         system=ROLE_MAP["ceo"]["system"],
     )
-    roles = parse_roles(out)
+    roles = find_roles(out)
+    if roles is None and not is_mock():
+        roles = _ask_roles(goal, out)
+    note = ""
+    if roles is None:
+        roles = list(OPTIONAL_ROLES)
+        note = " (역할 선택에 실패해 전체 역할로 진행)"
     out = _strip_roles_line(out)
     if is_mock():
         out = (
@@ -85,7 +110,7 @@ def ceo_node(state: CompanyState):
             f"완료기준: 산출물이 실행/검토 가능하고 보고서가 포함될 것.\n\n{out}"
         )
     names = ", ".join(r.capitalize() for r in roles + ["reporter"])
-    out += f"\n\n**참여 역할:** CEO, {names}"
+    out += f"\n\n**참여 역할:** CEO, {names}{note}"
     upd = _log(state, "ceo", out)
     upd["ceo_output"] = out
     upd["roles"] = roles
