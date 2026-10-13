@@ -5,9 +5,12 @@ Railway Postgres plugin injects DATABASE_URL automatically.
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
-if DATABASE_URL.startswith("postgres://"):
-    # SQLAlchemy needs the postgresql:// scheme
-    DATABASE_URL = "postgresql://" + DATABASE_URL[len("postgres://"):]
+# SQLAlchemy needs the postgresql:// scheme, and newer versions default that scheme to psycopg v3,
+# but requirements.txt ships psycopg2 -> name the driver explicitly.
+for _prefix in ("postgres://", "postgresql://"):
+    if DATABASE_URL.startswith(_prefix):
+        DATABASE_URL = "postgresql+psycopg2://" + DATABASE_URL[len(_prefix):]
+        break
 
 USE_DB = bool(DATABASE_URL)
 
