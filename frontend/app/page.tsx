@@ -93,6 +93,7 @@ export default function Page() {
   const [active, setActive] = useState(0);
   const [history, setHistory] = useState<Task[]>([]);
   const [interactive, setInteractive] = useState(true);
+  const [rounds, setRounds] = useState(2);
 
   function show(t: Task) {
     setTask(t);
@@ -148,7 +149,7 @@ export default function Page() {
   function run() {
     if (!goal.trim()) return;
     setTask(null);
-    call("/api/tasks", { goal, max_revisions: 1, interactive });
+    call("/api/tasks", { goal, max_revisions: rounds, interactive });
   }
 
   function resume(action: "approve" | "revise" | "finish", feedback: string, roles?: string[]) {
@@ -158,6 +159,14 @@ export default function Page() {
   const busy = loading || task?.status === "running";
 
   const ev = task?.events?.[active];
+
+  // "Developer (2차)": Developer/Reviewer take turns; number each one's turns so the debate reads as rounds.
+  const label = (i: number) => {
+    const e = task!.events[i];
+    if (e.agent !== "developer" && e.agent !== "reviewer") return e.name;
+    const n = task!.events.slice(0, i + 1).filter((x) => x.agent === e.agent).length;
+    return n > 1 ? `${e.name} (${n}차)` : e.name;
+  };
 
   const emojiOf = (id: string) => agents.find((a) => a.id === id)?.emoji || "✦";
 
@@ -218,6 +227,15 @@ export default function Page() {
                 <input type="checkbox" checked={interactive} onChange={(e) => setInteractive(e.target.checked)} />{" "}
                 단계별 승인 (CEO 계획 직후 · Reviewer 판정 직후에 멈춤)
               </label>
+              <label className="small" style={{ display: "block", marginTop: 6 }}>
+                💬 Developer ↔ Reviewer 토론 라운드{" "}
+                <select value={rounds} onChange={(e) => setRounds(Number(e.target.value))}>
+                  <option value={0}>없음 (1회 검토)</option>
+                  <option value={1}>최대 1회 재작업</option>
+                  <option value={2}>최대 2회 재작업</option>
+                  <option value={3}>최대 3회 재작업</option>
+                </select>
+              </label>
               <div style={{ height: 12 }} />
               <button className="btn" onClick={run} disabled={busy}>
                 {busy ? "에이전트 협업 중..." : "▶ 협업 시작"}
@@ -233,7 +251,7 @@ export default function Page() {
                       <span className="tl-dot">{emojiOf(e.agent)}</span>
                       <div className="tl-body">
                         <div className="tl-head">
-                          <b>{i + 1}. {e.name}</b>
+                          <b>{i + 1}. {label(i)}</b>
                           <span className="small">step {e.step}</span>
                         </div>
                         <div className="tl-text">{e.output.replace(/\s+/g, " ").slice(0, 90)}{e.output.length > 90 ? "…" : ""}</div>
@@ -261,7 +279,7 @@ export default function Page() {
                   <div className="tab-list">
                     {task.events.map((e, i) => (
                       <div key={i} className={`tab ${i === active ? "active" : ""}`} onClick={() => setActive(i)}>
-                        {i + 1}. {e.name}
+                        {i + 1}. {label(i)}
                       </div>
                     ))}
                   </div>

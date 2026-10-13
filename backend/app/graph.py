@@ -112,12 +112,21 @@ def planner_node(state: CompanyState):
     return upd
 
 
+RESPONSE_HEADING = "## 리뷰 응답"
+FINAL_HEADING = "## 수정된 산출물"
+
+
 def developer_node(state: CompanyState):
     plan = state.get("plan") or state.get("ceo_output", "")
     fb = state.get("review", "")
     prompt = f"계획:\n{plan}\n"
     if fb:
-        prompt += f"\n[Reviewer 피드백 - 반드시 반영]:\n{fb}\n"
+        prompt += (
+            f"\n[Reviewer 피드백]:\n{fb}\n"
+            f"\n[토론 규칙] 먼저 `{RESPONSE_HEADING}` 섹션에서 Reviewer의 지적 각각에 대해 "
+            "`수용: ...`(고치겠다) 또는 `반박: ...`(근거를 들어 동의하지 않음)으로 답하세요. "
+            f"그다음 `{FINAL_HEADING}` 섹션에 수용한 지적을 반영한 전체 산출물을 쓰세요.\n"
+        )
     hf = state.get("human_feedback", "")
     if hf:
         prompt += f"\n[사용자 피드백 - 최우선으로 반영]:\n{hf}\n"
@@ -126,7 +135,8 @@ def developer_node(state: CompanyState):
     if is_mock():
         rev = state.get("revisions", 0)
         out = (
-            f"## 산출물 초안 (rev{rev + 1})\n목표 '{state['goal']}'에 대한 결과물:\n\n"
+            (f"{RESPONSE_HEADING}\n- 수용: 실행 예제와 예외 처리를 추가함\n- 반박: 없음\n\n{FINAL_HEADING}\n" if fb else "")
+            + f"## 산출물 초안 (rev{rev + 1})\n목표 '{state['goal']}'에 대한 결과물:\n\n"
             "```python\n# 예시 산출물\ndef solve():\n    return 'done'\n```\n"
             "- 핵심 기능 3가지 구현/정리\n- 사용 방법 포함\n"
             + (f"\n- 반영된 피드백: {fb[:300]}\n" if fb else "")
@@ -140,10 +150,15 @@ def developer_node(state: CompanyState):
 
 def reviewer_node(state: CompanyState):
     dev = state.get("dev_output", "")
-    out = chat(
-        f"다음 산출물을 검토하세요:\n{dev}\n기준: 정확성, 완성도, 실행가능성. APPROVED 또는 NEEDS_FIX로 시작하세요.",
-        system=ROLE_MAP["reviewer"]["system"],
-    )
+    prompt = f"다음 산출물을 검토하세요:\n{dev}\n기준: 정확성, 완성도, 실행가능성. APPROVED 또는 NEEDS_FIX로 시작하세요."
+    prev = state.get("review", "")
+    if prev:
+        prompt += (
+            f"\n\n[당신의 이전 검토]\n{prev[:1200]}\n"
+            f"위 산출물의 `{RESPONSE_HEADING}`에서 Developer가 수용/반박한 내용을 읽으세요. "
+            "타당한 반박은 인정하고, 해결된 지적은 철회하세요. 아직 남은 문제만 NEEDS_FIX로 지적하세요."
+        )
+    out = chat(prompt, system=ROLE_MAP["reviewer"]["system"])
     approved = False
     if is_mock():
         # mock: 1회차는 NEEDS_FIX 유도(재작업 데모), 이후 APPROVED — 단 max_revisions=0이면 바로 승인
