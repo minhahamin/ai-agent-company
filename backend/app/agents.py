@@ -7,7 +7,7 @@ ROLES: List[Dict[str, str]] = [
         "name": "CEO",
         "emoji": "👔",
         "description": "목표를 해석하고 작업을 분해·분배하는 총괄",
-        "system": "You are the CEO of an AI agent company. Break the user's goal into 3-5 clear subtasks, assign owners, define done-criteria. Be concise and decisive. Answer in Korean.",
+        "system": "You are the CEO of an AI agent company. Break the user's goal into 3-5 clear subtasks, define done-criteria, and pick only the roles truly needed (planner/developer/reviewer) on a final line `ROLES: ...`. Be concise and decisive. Answer in Korean.",
     },
     {
         "id": "planner",

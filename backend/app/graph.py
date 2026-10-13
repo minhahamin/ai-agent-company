@@ -1,4 +1,7 @@
-"""LangGraph orchestration: CEO -> Planner -> Developer -> Reviewer (-> Developer retry) -> Reporter."""
+"""LangGraph orchestration: CEO -> [Planner -> Developer -> Reviewer (-> Developer retry)] -> Reporter.
+
+The CEO picks which optional roles are needed; the rest are skipped."""
+import re
 from typing import TypedDict, List, Dict, Any
 from langgraph.graph import StateGraph, END
 
@@ -15,6 +18,7 @@ class CompanyState(TypedDict, total=False):
     review: str
     report: str
     approved: bool
+    roles: List[str]
     revisions: int
     max_revisions: int
     log: List[Dict[str, Any]]
@@ -26,12 +30,37 @@ def _log(state: CompanyState, agent: str, output: str) -> Dict[str, Any]:
     return {"log": log}
 
 
+# Execution order of the optional roles. CEO always runs first, Reporter always last.
+OPTIONAL_ROLES = ["planner", "developer", "reviewer"]
+SEQUENCE = [*OPTIONAL_ROLES, "reporter"]
+
+
+def parse_roles(text: str) -> List[str]:
+    """Read the CEO's trailing 'ROLES: a, b' line. Unparseable -> all roles."""
+    found = re.findall(r"ROLES\s*[:：]\s*(.+)", text, flags=re.IGNORECASE)
+    if not found:
+        return list(OPTIONAL_ROLES)
+    picked = {t.strip().lower() for t in re.split(r"[,\s]+", found[-1]) if t.strip()}
+    roles = [r for r in OPTIONAL_ROLES if r in picked]
+    if "developer" not in roles:
+        roles = [r for r in roles if r != "reviewer"]  # nothing to review
+    return roles
+
+
+def _strip_roles_line(text: str) -> str:
+    return re.sub(r"\n?[^\n]*ROLES\s*[:：][^\n]*", "", text, flags=re.IGNORECASE).rstrip()
+
+
 def ceo_node(state: CompanyState):
     goal = state["goal"]
     out = chat(
-        f"사용자 목표: {goal}\n이 목표를 3~5개의 하위 작업으로 분해하고 담당자(Planner/Developer/Reviewer/Reporter)와 완료기준을 정하세요.",
+        f"사용자 목표: {goal}\n이 목표를 3~5개의 하위 작업으로 분해하고 완료기준을 정하세요.\n"
+        "그리고 이 목표에 꼭 필요한 역할만 골라, 마지막 줄에 정확히 `ROLES: planner, developer, reviewer` 형식으로 적으세요 "
+        "(선택지: planner, developer, reviewer. 불필요한 역할은 빼세요. 예: 코드/문서 산출물이 필요 없으면 developer와 reviewer 제외).",
         system=ROLE_MAP["ceo"]["system"],
     )
+    roles = parse_roles(out)
+    out = _strip_roles_line(out)
     if is_mock():
         out = (
             f"## CEO 지시 (목표: {goal})\n"
@@ -41,8 +70,11 @@ def ceo_node(state: CompanyState):
             "4. [Reporter] 최종 요약 보고\n"
             f"완료기준: 산출물이 실행/검토 가능하고 보고서가 포함될 것.\n\n{out}"
         )
+    names = ", ".join(r.capitalize() for r in roles + ["reporter"])
+    out += f"\n\n**참여 역할:** CEO, {names}"
     upd = _log(state, "ceo", out)
     upd["ceo_output"] = out
+    upd["roles"] = roles
     return upd
 
 
@@ -66,7 +98,7 @@ def planner_node(state: CompanyState):
 
 
 def developer_node(state: CompanyState):
-    plan = state.get("plan", "")
+    plan = state.get("plan") or state.get("ceo_output", "")
     fb = state.get("review", "")
     prompt = f"계획:\n{plan}\n"
     if fb:
@@ -139,6 +171,17 @@ def _route_after_review(state: CompanyState) -> str:
     return "developer"
 
 
+def _router(current: str):
+    """Next role after `current` that the CEO selected (Reporter is always selected)."""
+    def route(state: CompanyState) -> str:
+        active = state.get("roles", OPTIONAL_ROLES)
+        for r in SEQUENCE[SEQUENCE.index(current) + 1:] if current in SEQUENCE else SEQUENCE:
+            if r == "reporter" or r in active:
+                return r
+        return "reporter"
+    return route
+
+
 def build_graph():
     g = StateGraph(CompanyState)
     g.add_node("ceo", ceo_node)
@@ -147,9 +190,10 @@ def build_graph():
     g.add_node("reviewer", reviewer_node)
     g.add_node("reporter", reporter_node)
     g.set_entry_point("ceo")
-    g.add_edge("ceo", "planner")
-    g.add_edge("planner", "developer")
-    g.add_edge("developer", "reviewer")
+    targets = {r: r for r in SEQUENCE}
+    g.add_conditional_edges("ceo", _router("ceo"), targets)
+    g.add_conditional_edges("planner", _router("planner"), targets)
+    g.add_conditional_edges("developer", _router("developer"), targets)
     g.add_conditional_edges("reviewer", _route_after_review, {"developer": "developer", "reporter": "reporter"})
     g.add_edge("reporter", END)
     return g.compile()
