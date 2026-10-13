@@ -3,7 +3,9 @@
 The CEO picks which optional roles are needed; the rest are skipped."""
 import re
 from typing import TypedDict, List, Dict, Any
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, END
+from langgraph.types import Command, interrupt
 
 from .agents import ROLE_MAP
 from .llm import chat, is_mock
@@ -19,6 +21,8 @@ class CompanyState(TypedDict, total=False):
     report: str
     approved: bool
     roles: List[str]
+    interactive: bool
+    human_feedback: str
     revisions: int
     max_revisions: int
     log: List[Dict[str, Any]]
@@ -35,16 +39,20 @@ OPTIONAL_ROLES = ["planner", "developer", "reviewer"]
 SEQUENCE = [*OPTIONAL_ROLES, "reporter"]
 
 
+def normalize_roles(picked) -> List[str]:
+    roles = [r for r in OPTIONAL_ROLES if r in {str(p).strip().lower() for p in picked}]
+    if "developer" not in roles:
+        roles = [r for r in roles if r != "reviewer"]  # nothing to review
+    return roles
+
+
 def parse_roles(text: str) -> List[str]:
     """Read the CEO's trailing 'ROLES: a, b' line. Unparseable -> all roles."""
     found = re.findall(r"ROLES\s*[:：]\s*(.+)", text, flags=re.IGNORECASE)
     if not found:
         return list(OPTIONAL_ROLES)
     picked = {t.strip().lower() for t in re.split(r"[,\s]+", found[-1]) if t.strip()}
-    roles = [r for r in OPTIONAL_ROLES if r in picked]
-    if "developer" not in roles:
-        roles = [r for r in roles if r != "reviewer"]  # nothing to review
-    return roles
+    return normalize_roles(picked)
 
 
 def _strip_roles_line(text: str) -> str:
@@ -53,8 +61,14 @@ def _strip_roles_line(text: str) -> str:
 
 def ceo_node(state: CompanyState):
     goal = state["goal"]
+    fb = state.get("human_feedback", "")
+    prev = (
+        f"\n\n[이전 CEO 계획]\n{state.get('ceo_output', '')}\n[사용자 수정 요청 - 반드시 반영]\n{fb}\n"
+        if fb
+        else ""
+    )
     out = chat(
-        f"사용자 목표: {goal}\n이 목표를 3~5개의 하위 작업으로 분해하고 완료기준을 정하세요.\n"
+        f"사용자 목표: {goal}{prev}\n이 목표를 3~5개의 하위 작업으로 분해하고 완료기준을 정하세요.\n"
         "그리고 이 목표에 꼭 필요한 역할만 골라, 마지막 줄에 정확히 `ROLES: planner, developer, reviewer` 형식으로 적으세요 "
         "(선택지: planner, developer, reviewer. 불필요한 역할은 빼세요. 예: 코드/문서 산출물이 필요 없으면 developer와 reviewer 제외).",
         system=ROLE_MAP["ceo"]["system"],
@@ -75,6 +89,7 @@ def ceo_node(state: CompanyState):
     upd = _log(state, "ceo", out)
     upd["ceo_output"] = out
     upd["roles"] = roles
+    upd["human_feedback"] = ""
     return upd
 
 
@@ -103,6 +118,9 @@ def developer_node(state: CompanyState):
     prompt = f"계획:\n{plan}\n"
     if fb:
         prompt += f"\n[Reviewer 피드백 - 반드시 반영]:\n{fb}\n"
+    hf = state.get("human_feedback", "")
+    if hf:
+        prompt += f"\n[사용자 피드백 - 최우선으로 반영]:\n{hf}\n"
     prompt += f"\n원래 목표: {state['goal']}\n위 계획에 따라 실제 산출물을 작성하세요."
     out = chat(prompt, system=ROLE_MAP["developer"]["system"])
     if is_mock():
@@ -116,6 +134,7 @@ def developer_node(state: CompanyState):
         )
     upd = _log(state, "developer", out)
     upd["dev_output"] = out
+    upd["human_feedback"] = ""
     return upd
 
 
@@ -182,6 +201,42 @@ def _router(current: str):
     return route
 
 
+def ceo_gate(state: CompanyState) -> Command:
+    """Pause after the CEO's plan so the user can approve, edit roles, or ask for a revision."""
+    if not state.get("interactive"):
+        return Command(goto=_router("ceo")(state))
+    ans = interrupt({
+        "gate": "plan",
+        "message": "CEO 계획을 확인하세요. 승인하거나, 참여 역할을 바꾸거나, 수정 지시를 보낼 수 있어요.",
+        "roles": state.get("roles", []),
+    })
+    fb = (ans.get("feedback") or "").strip()
+    if ans.get("action") == "revise" and fb:
+        return Command(goto="ceo", update={"human_feedback": fb})
+    update: Dict[str, Any] = {}
+    if ans.get("roles") is not None:
+        update["roles"] = normalize_roles(ans["roles"])
+    return Command(goto=_router("ceo")({**state, **update}), update=update)
+
+
+def review_gate(state: CompanyState) -> Command:
+    """Pause after the Reviewer's verdict so the user can accept it, force a rework, or finish."""
+    if not state.get("interactive"):
+        return Command(goto=_route_after_review(state))
+    ans = interrupt({
+        "gate": "review",
+        "message": "Reviewer 판정을 확인하세요. 그대로 진행하거나, 피드백과 함께 재작업시키거나, 바로 보고서로 마무리할 수 있어요.",
+        "approved": bool(state.get("approved")),
+    })
+    action = ans.get("action")
+    fb = (ans.get("feedback") or "").strip()
+    if action == "revise" and fb:
+        return Command(goto="developer", update={"human_feedback": fb})
+    if action == "finish":
+        return Command(goto="reporter")
+    return Command(goto=_route_after_review(state))
+
+
 def build_graph():
     g = StateGraph(CompanyState)
     g.add_node("ceo", ceo_node)
@@ -189,14 +244,16 @@ def build_graph():
     g.add_node("developer", developer_node)
     g.add_node("reviewer", reviewer_node)
     g.add_node("reporter", reporter_node)
+    g.add_node("ceo_gate", ceo_gate)
+    g.add_node("review_gate", review_gate)
     g.set_entry_point("ceo")
     targets = {r: r for r in SEQUENCE}
-    g.add_conditional_edges("ceo", _router("ceo"), targets)
+    g.add_edge("ceo", "ceo_gate")  # ceo_gate routes onward via Command
     g.add_conditional_edges("planner", _router("planner"), targets)
     g.add_conditional_edges("developer", _router("developer"), targets)
-    g.add_conditional_edges("reviewer", _route_after_review, {"developer": "developer", "reporter": "reporter"})
+    g.add_edge("reviewer", "review_gate")  # review_gate routes onward via Command
     g.add_edge("reporter", END)
-    return g.compile()
+    return g.compile(checkpointer=MemorySaver())
 
 
 _company_app = None
@@ -209,14 +266,25 @@ def get_graph():
     return _company_app
 
 
-def run_company(goal: str, max_revisions: int = 1) -> Dict[str, Any]:
-    app = get_graph()
-    init: CompanyState = {
+def initial_state(goal: str, max_revisions: int = 1, interactive: bool = False) -> CompanyState:
+    return {
         "goal": goal,
         "revisions": 0,
         "max_revisions": max_revisions,
         "log": [],
         "approved": False,
+        "interactive": interactive,
+        "human_feedback": "",
     }
-    final = app.invoke(init)
+
+
+def run_company(goal: str, max_revisions: int = 1) -> Dict[str, Any]:
+    """Blocking, non-interactive run (no pauses)."""
+    import uuid
+
+    app = get_graph()
+    final = app.invoke(
+        initial_state(goal, max_revisions),
+        {"configurable": {"thread_id": uuid.uuid4().hex}},
+    )
     return final

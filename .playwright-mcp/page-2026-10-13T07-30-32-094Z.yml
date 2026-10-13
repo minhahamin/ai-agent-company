@@ -1,0 +1,144 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - generic: ★
+    - generic: ★
+    - generic: ☁️
+    - generic: 🌙
+    - banner [ref=e4]:
+      - heading "AI Agent Company" [level=1] [ref=e5]
+      - paragraph [ref=e6]: 목표를 입력하면 CEO가 꼭 필요한 역할만 골라 LangGraph로 협업합니다.
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - generic [ref=e12]: agents.exe
+            - generic [ref=e13]:
+              - generic [ref=e14]: _
+              - generic [ref=e15]: □
+              - generic [ref=e16]: ×
+          - generic [ref=e17]:
+            - generic [ref=e18]:
+              - generic [ref=e19]: 👔
+              - generic [ref=e20]:
+                - generic [ref=e21]: CEO
+                - generic [ref=e22]: ceo
+            - generic [ref=e23]:
+              - generic [ref=e24]: 🗺️
+              - generic [ref=e25]:
+                - generic [ref=e26]: Planner
+                - generic [ref=e27]: planner
+            - generic [ref=e28]:
+              - generic [ref=e29]: 💻
+              - generic [ref=e30]:
+                - generic [ref=e31]: Developer
+                - generic [ref=e32]: developer
+            - generic [ref=e33]:
+              - generic [ref=e34]: 🔍
+              - generic [ref=e35]:
+                - generic [ref=e36]: Reviewer
+                - generic [ref=e37]: reviewer
+            - generic [ref=e38]:
+              - generic [ref=e39]: 📣
+              - generic [ref=e40]:
+                - generic [ref=e41]: Reporter
+                - generic [ref=e42]: reporter
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - generic [ref=e45]: history.exe
+            - generic [ref=e46]:
+              - generic [ref=e47]: _
+              - generic [ref=e48]: □
+              - generic [ref=e49]: ×
+          - generic [ref=e50]:
+            - heading "이전 작업" [level=4] [ref=e51]
+            - list [ref=e79]:
+              - listitem [ref=e80] [cursor=pointer]:
+                - generic [ref=e81]: d910d306 · done
+                - generic [ref=e82]: "AI Agent Company: 신규 프로젝트 기획…"
+      - generic [ref=e53]:
+        - generic [ref=e54]:
+          - generic [ref=e55]:
+            - generic [ref=e56]: goal.txt - notepad
+            - generic [ref=e57]:
+              - generic [ref=e58]: _
+              - generic [ref=e59]: □
+              - generic [ref=e60]: ×
+          - generic [ref=e61]:
+            - heading "① 목표 입력" [level=4] [ref=e62]
+            - 'textbox "예: AI Agent Company 소개 글 작성" [ref=e63]': "AI Agent Company: 신규 프로젝트 기획안 작성 타자 테 xyz789 hello world"
+            - generic [ref=e64]:
+              - checkbox "단계별 승인 (CEO 계획 직후 · Reviewer 판정 직후에 멈춤)" [checked] [ref=e65]
+              - text: 단계별 승인 (CEO 계획 직후 · Reviewer 판정 직후에 멈춤)
+            - button "▶ 협업 시작" [ref=e182] [cursor=pointer]
+        - generic [ref=e84]:
+          - generic [ref=e85]:
+            - generic [ref=e86]: timeline.log
+            - generic [ref=e87]:
+              - generic [ref=e88]: _
+              - generic [ref=e89]: □
+              - generic [ref=e90]: ×
+          - generic [ref=e91]:
+            - heading "② 협업 타임라인" [level=4] [ref=e92]
+            - list [ref=e97]:
+              - listitem [ref=e98] [cursor=pointer]:
+                - generic [ref=e99]: 👔
+                - generic [ref=e100]:
+                  - generic [ref=e101]:
+                    - generic [ref=e102]: 1. CEO
+                    - generic [ref=e103]: step 1
+                  - generic [ref=e104]: "## CEO 지시 (목표: AI Agent Company: 신규 프로젝트 기획안 작성 타자 테) 1. [Planner] 요구사항 정리 및 계획 수립 2. [Dev…"
+              - listitem [ref=e136] [cursor=pointer]:
+                - generic [ref=e137]: 🗺️
+                - generic [ref=e138]:
+                  - generic [ref=e139]:
+                    - generic [ref=e140]: 2. Planner
+                    - generic [ref=e141]: step 2
+                  - generic [ref=e142]: "## 실행 계획 - 목표: AI Agent Company: 신규 프로젝트 기획안 작성 타자 테 - Step1: 요구사항 3줄 요약 - Step2: 산출물 구조 설…"
+              - listitem [ref=e143] [cursor=pointer]:
+                - generic [ref=e144]: 💻
+                - generic [ref=e145]:
+                  - generic [ref=e146]:
+                    - generic [ref=e147]: 3. Developer
+                    - generic [ref=e148]: step 3
+                  - generic [ref=e149]: "## 산출물 초안 (rev1) 목표 'AI Agent Company: 신규 프로젝트 기획안 작성 타자 테'에 대한 결과물: ```python # 예시 산출물 de…"
+              - listitem [ref=e150] [cursor=pointer]:
+                - generic [ref=e151]: 🔍
+                - generic [ref=e152]:
+                  - generic [ref=e153]:
+                    - generic [ref=e154]: 4. Reviewer
+                    - generic [ref=e155]: step 4
+                  - generic [ref=e156]: "NEEDS_FIX: 예시 코드에 실행 예제와 예외 처리가 부족함. 사용 예시와 검증 방법을 보강하세요. [MOCK You are the Reviewer (QA).…"
+              - listitem [ref=e183] [cursor=pointer]:
+                - generic [ref=e184]: 📣
+                - generic [ref=e185]:
+                  - generic [ref=e186]:
+                    - generic [ref=e187]: 5. Reporter
+                    - generic [ref=e188]: step 5
+                  - generic [ref=e189]: "## 최종 보고서 — 'AI Agent Company: 신규 프로젝트 기획안 작성 타자 테' - 승인 여부: ⚠️ 조건부 완료 - 산출물 요약: ## 산출물 초안…"
+        - generic [ref=e68]:
+          - generic [ref=e69]:
+            - generic [ref=e70]: result.exe
+            - generic [ref=e71]:
+              - generic [ref=e72]: _
+              - generic [ref=e73]: □
+              - generic [ref=e74]: ×
+          - generic [ref=e75]:
+            - heading "③ 협업 결과" [level=4] [ref=e76]
+            - paragraph [ref=e93]:
+              - text: task d910d306 ·
+              - generic [ref=e94]: 검토중
+              - text: · 5 steps
+            - generic [ref=e128]:
+              - generic [ref=e129] [cursor=pointer]: 1. CEO
+              - generic [ref=e175] [cursor=pointer]: 2. Planner
+              - generic [ref=e176] [cursor=pointer]: 3. Developer
+              - generic [ref=e177] [cursor=pointer]: 4. Reviewer
+              - generic [ref=e190] [cursor=pointer]: 5. Reporter
+            - heading "Reporter 출력" [level=4] [ref=e191]
+            - generic [ref=e131]: "## 최종 보고서 — 'AI Agent Company: 신규 프로젝트 기획안 작성 타자 테' - 승인 여부: ⚠️ 조건부 완료 - 산출물 요약: ## 산출물 초안 (rev1) 목표 'AI Agent Company: 신규 프로젝트 기획안 작성 타자 테'에 대한 결과물: ```python # 예시 산출물 def solve(): return 'done' ``` - 핵심 기능 3가지 구현/정리 - 사용 방법 포함 [MOCK You are the Developer. Produce the actua... - 다음 단계: 실제 연동(API 키 설정) 후 고도화 [MOCK You are the Reporter. Summarize the whole collaboration: wha...] 요청을 처리했습니다. 입력 요약: 목표: AI Agent Company: 신규 프로젝트 기획안 작성 타자 테 CEO: ## CEO 지시 (목표: AI Agent Company: 신규 프로젝트 기획안 작성 타자 테) 1. [Planner] 요구사항 정리 및 계획 수립 2. [Developer] 핵심 산출물 초안 작성 3. [Reviewer] 품질 검토 및 결함 지적 4. [Reporter] 최종 요약 보고 완료기준: 산출물이 실행/검토 가능하고 보고서가 포함될 것. **참여 역할:** CEO, Planner, Developer, Reviewer, Reporter 계획: ## 실행 계획 - 목표: AI Agent Company: 신규 프로젝트 기획안 작성 타자 테 - Step1: 요구사항 3줄 요약 - Step2: 산출물 구조 설계 - Step3: 초안 작성 → 검토 → 최종 보고 - 리스크: 범위膨脹, 모호한 완료기준 [MOCK You are the Planner (PM). Turn the CEO's directive into a co...] 요청을 처리했습니다. 입력 요약: CEO 지시: ## CEO 지시 (목표: AI Agent Company: 신규 프로젝트 기획안 작성 타자 테) 1. [Planner] 요구사항 정리 및 계획 수립 2. [Developer] 핵심 산출물 초안 작성 3. [Reviewer] 품질 검토 및 결함 지적 4. [Reporter] 최종 요약 보고 완료기준: 산출물이 실행/검토 가능하고 보고서가 포함될 것. **참여 역할:** CEO, Planner, Developer, Reviewer, Reporter ... (실제 LLM을 쓰려면 OPENROUTER_API_KEY 또는 OPENAI_API_KEY를 설정하세요.)"
+            - heading "📣 최종 보고서" [level=4] [ref=e192]
+            - generic [ref=e193]: "## 최종 보고서 — 'AI Agent Company: 신규 프로젝트 기획안 작성 타자 테' - 승인 여부: ⚠️ 조건부 완료 - 산출물 요약: ## 산출물 초안 (rev1) 목표 'AI Agent Company: 신규 프로젝트 기획안 작성 타자 테'에 대한 결과물: ```python # 예시 산출물 def solve(): return 'done' ``` - 핵심 기능 3가지 구현/정리 - 사용 방법 포함 [MOCK You are the Developer. Produce the actua... - 다음 단계: 실제 연동(API 키 설정) 후 고도화 [MOCK You are the Reporter. Summarize the whole collaboration: wha...] 요청을 처리했습니다. 입력 요약: 목표: AI Agent Company: 신규 프로젝트 기획안 작성 타자 테 CEO: ## CEO 지시 (목표: AI Agent Company: 신규 프로젝트 기획안 작성 타자 테) 1. [Planner] 요구사항 정리 및 계획 수립 2. [Developer] 핵심 산출물 초안 작성 3. [Reviewer] 품질 검토 및 결함 지적 4. [Reporter] 최종 요약 보고 완료기준: 산출물이 실행/검토 가능하고 보고서가 포함될 것. **참여 역할:** CEO, Planner, Developer, Reviewer, Reporter 계획: ## 실행 계획 - 목표: AI Agent Company: 신규 프로젝트 기획안 작성 타자 테 - Step1: 요구사항 3줄 요약 - Step2: 산출물 구조 설계 - Step3: 초안 작성 → 검토 → 최종 보고 - 리스크: 범위膨脹, 모호한 완료기준 [MOCK You are the Planner (PM). Turn the CEO's directive into a co...] 요청을 처리했습니다. 입력 요약: CEO 지시: ## CEO 지시 (목표: AI Agent Company: 신규 프로젝트 기획안 작성 타자 테) 1. [Planner] 요구사항 정리 및 계획 수립 2. [Developer] 핵심 산출물 초안 작성 3. [Reviewer] 품질 검토 및 결함 지적 4. [Reporter] 최종 요약 보고 완료기준: 산출물이 실행/검토 가능하고 보고서가 포함될 것. **참여 역할:** CEO, Planner, Developer, Reviewer, Reporter ... (실제 LLM을 쓰려면 OPENROUTER_API_KEY 또는 OPENAI_API_KEY를 설정하세요.)"
+            - button "📄 보고서 PDF 다운로드" [active] [ref=e194] [cursor=pointer]
+            - link "📦 산출물 다운로드 (zip)" [ref=e196] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/api/tasks/d910d306/download
+  - alert [ref=e78]

@@ -169,3 +169,9 @@ kbd { background: var(--pink-soft); border: 2px solid var(--pink); border-radius
 .history li:hover { transform: translateY(-1px); }
 .history li.on { background: var(--lav); color: #fff; }
 .history li.on .small { color: #fff; }
+
+/* human-in-the-loop gate */
+.gate textarea { margin-top: 8px; }
+.role-pick { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
+.role-pick label { cursor: pointer; }
+.gate-btns { display: flex; flex-wrap: wrap; gap: 8px; }

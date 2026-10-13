@@ -6,7 +6,60 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 type Agent = { id: string; name: string; emoji: string; description: string };
 type Event = { agent: string; name: string; output: string; step: number };
-type Task = { id: string; goal: string; status: string; events: Event[]; final_report: string; approved: boolean };
+type Pending = { gate: "plan" | "review"; message: string; roles?: string[]; approved?: boolean };
+type Task = {
+  id: string; goal: string; status: string; events: Event[]; final_report: string; approved: boolean;
+  interactive?: boolean; pending?: Pending | null;
+};
+
+const OPTIONAL = [
+  { id: "planner", label: "🗺️ Planner" },
+  { id: "developer", label: "💻 Developer" },
+  { id: "reviewer", label: "🔍 Reviewer" },
+];
+
+// Defined at module scope on purpose: a component declared inside Page remounts on every keystroke.
+function GatePanel({ pending, busy, onResume }: {
+  pending: Pending;
+  busy: boolean;
+  onResume: (action: "approve" | "revise" | "finish", feedback: string, roles?: string[]) => void;
+}) {
+  const [feedback, setFeedback] = useState("");
+  const [roles, setRoles] = useState<string[]>(pending.roles || []);
+  const toggle = (id: string) => setRoles((r) => (r.includes(id) ? r.filter((x) => x !== id) : [...r, id]));
+  const isPlan = pending.gate === "plan";
+  return (
+    <div className="gate">
+      <h4>✋ {isPlan ? "계획 확인" : "판정 확인"} — 당신의 차례예요</h4>
+      <p className="small">{pending.message}</p>
+      {isPlan ? (
+        <div className="role-pick">
+          {OPTIONAL.map((o) => (
+            <label key={o.id}>
+              <input type="checkbox" checked={roles.includes(o.id)} onChange={() => toggle(o.id)} /> {o.label}
+            </label>
+          ))}
+        </div>
+      ) : (
+        <p className="small">Reviewer 판정: {pending.approved ? "✅ 승인" : "⚠️ 수정 필요"}</p>
+      )}
+      <textarea rows={3} value={feedback} onChange={(e) => setFeedback(e.target.value)}
+        placeholder={isPlan ? "수정 지시 (예: 범위를 줄이고 일정을 추가해줘)" : "재작업 지시 (예: 예외 처리를 추가해줘)"} />
+      <div style={{ height: 8 }} />
+      <div className="gate-btns">
+        <button className="btn" disabled={busy} onClick={() => onResume("approve", "", isPlan ? roles : undefined)}>
+          {isPlan ? "✔ 승인하고 진행" : "✔ 판정대로 진행"}
+        </button>
+        <button className="btn" disabled={busy || !feedback.trim()} onClick={() => onResume("revise", feedback.trim())}>
+          ✎ {isPlan ? "계획 수정 요청" : "피드백으로 재작업"}
+        </button>
+        {!isPlan && (
+          <button className="btn" disabled={busy} onClick={() => onResume("finish", "")}>🏁 바로 보고서로</button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const Win = ({ title, lav, children }: { title: string; lav?: boolean; children: React.ReactNode }) => (
   <div className={`win ${lav ? "lav" : ""}`}>
@@ -39,6 +92,7 @@ export default function Page() {
   const [task, setTask] = useState<Task | null>(null);
   const [active, setActive] = useState(0);
   const [history, setHistory] = useState<Task[]>([]);
+  const [interactive, setInteractive] = useState(true);
 
   function show(t: Task) {
     setTask(t);
@@ -59,25 +113,49 @@ export default function Page() {
     } catch {}
   }, []);
 
-  async function run() {
-    if (!goal.trim()) return;
+  // While the backend works on a task, poll it; polling stops on "waiting" (our turn) or "done".
+  useEffect(() => {
+    if (!task || task.status !== "running") return;
+    const id = task.id;
+    const timer = setInterval(() => {
+      fetch(`${API}/api/tasks/${id}`).then((r) => (r.ok ? r.json() : null)).then((t: Task | null) => {
+        if (!t) return;
+        show(t);
+        if (t.status !== "running") loadHistory();
+      }).catch(() => {});
+    }, 1500);
+    return () => clearInterval(timer);
+  }, [task?.id, task?.status]);
+
+  async function call(url: string, body: object) {
     setLoading(true);
-    setTask(null);
     try {
-      const r = await fetch(`${API}/api/tasks`, {
+      const r = await fetch(`${API}${url}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goal, max_revisions: 1 }),
+        body: JSON.stringify(body),
       });
-      const data = await r.json();
-      show(data);
+      if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+      show(await r.json());
       loadHistory();
     } catch (e: any) {
-      alert("백엔드 연결 실패: " + e.message);
+      alert("요청 실패: " + e.message);
     } finally {
       setLoading(false);
     }
   }
+
+  function run() {
+    if (!goal.trim()) return;
+    setTask(null);
+    call("/api/tasks", { goal, max_revisions: 1, interactive });
+  }
+
+  function resume(action: "approve" | "revise" | "finish", feedback: string, roles?: string[]) {
+    if (task) call(`/api/tasks/${task.id}/resume`, { action, feedback, roles });
+  }
+
+  const busy = loading || task?.status === "running";
 
   const ev = task?.events?.[active];
 
@@ -136,9 +214,13 @@ export default function Page() {
             <Win title="goal.txt - notepad">
               <h4>① 목표 입력</h4>
               <textarea rows={4} value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="예: AI Agent Company 소개 글 작성" />
+              <label className="small" style={{ display: "block", marginTop: 8 }}>
+                <input type="checkbox" checked={interactive} onChange={(e) => setInteractive(e.target.checked)} />{" "}
+                단계별 승인 (CEO 계획 직후 · Reviewer 판정 직후에 멈춤)
+              </label>
               <div style={{ height: 12 }} />
-              <button className="btn" onClick={run} disabled={loading}>
-                {loading ? "에이전트 협업 중..." : "▶ 협업 시작"}
+              <button className="btn" onClick={run} disabled={busy}>
+                {busy ? "에이전트 협업 중..." : "▶ 협업 시작"}
               </button>
             </Win>
 
@@ -159,6 +241,12 @@ export default function Page() {
                     </li>
                   ))}
                 </ol>
+              </Win>
+            )}
+
+            {task?.status === "waiting" && task.pending && (
+              <Win title="your-turn.exe">
+                <GatePanel key={`${task.id}-${task.events.length}`} pending={task.pending} busy={busy} onResume={resume} />
               </Win>
             )}
 
@@ -183,11 +271,22 @@ export default function Page() {
                       <pre className="output">{ev.output}</pre>
                     </>
                   )}
-                  <h4>📣 최종 보고서</h4>
-                  <pre className="output">{task.final_report}</pre>
-                  <button className="btn" onClick={() => window.print()}>📄 보고서 PDF 다운로드</button>
-                  <div style={{ height: 8 }} />
-                  <a className="btn" href={`${API}/api/tasks/${task.id}/download`} style={{ display: "inline-block", textDecoration: "none" }}>📦 산출물 다운로드 (zip)</a>
+                  {task.status === "running" && <p className="small">⏳ 에이전트가 작업 중이에요…</p>}
+                  {task.status === "waiting" && <p className="small">✋ your-turn 창에서 다음 단계를 정해주세요.</p>}
+                  {task.status === "failed" && <p className="small">⚠️ 작업이 중단되었어요.</p>}
+                  {task.final_report && (
+                    <>
+                      <h4>📣 최종 보고서</h4>
+                      <pre className="output">{task.final_report}</pre>
+                    </>
+                  )}
+                  {task.status === "done" && (
+                    <>
+                      <button className="btn" onClick={() => window.print()}>📄 보고서 PDF 다운로드</button>
+                      <div style={{ height: 8 }} />
+                      <a className="btn" href={`${API}/api/tasks/${task.id}/download`} style={{ display: "inline-block", textDecoration: "none" }}>📦 산출물 다운로드 (zip)</a>
+                    </>
+                  )}
                 </>
               )}
             </Win>

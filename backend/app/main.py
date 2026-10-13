@@ -7,9 +7,9 @@ load_dotenv()
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from .schemas import TaskCreate, TaskResult, AgentEvent, AgentInfo
+from .schemas import TaskCreate, TaskResult, ResumeBody, AgentInfo
 from .agents import ROLES
-from .graph import run_company
+from . import runner
 from .llm import get_mode
 from . import llm as llm_state
 from . import db as store
@@ -45,55 +45,48 @@ def create_task(body: TaskCreate):
     if not goal:
         raise HTTPException(400, "goal is required")
     tid = uuid.uuid4().hex[:8]
-    task = TaskResult(id=tid, goal=goal, status="running")
+    task = TaskResult(id=tid, goal=goal, status="running", interactive=body.interactive)
     TASKS[tid] = task
     store.save_task(task)
-    try:
-        final = run_company(goal, max_revisions=body.max_revisions)
-    except Exception as e:
-        task.status = "failed"
-        task.final_report = f"실패: {e}"
-        TASKS[tid] = task
-        store.save_task(task)
-        raise HTTPException(500, str(e))
-    name_map = {r["id"]: r["name"] for r in ROLES}
-    events = [
-        AgentEvent(
-            agent=e["agent"],
-            name=name_map.get(e["agent"], e["agent"]),
-            status="done",
-            output=e["output"],
-            step=e.get("step", i + 1),
-        )
-        for i, e in enumerate(final.get("log", []))
-    ]
-    task.status = "done"
-    task.events = events
-    task.final_report = final.get("report", "")
-    task.approved = bool(final.get("approved", False))
-    TASKS[tid] = task
-    store.save_task(task)
+    runner.start(task, body.max_revisions)
+    return task
+
+
+@app.post("/api/tasks/{tid}/resume", response_model=TaskResult)
+def resume_task(tid: str, body: ResumeBody):
+    task = TASKS.get(tid)
+    if task is None:
+        raise HTTPException(404, "task not found (server restarted?)")
+    if task.status != "waiting":
+        raise HTTPException(409, "task is not waiting for input")
+    runner.resume(task, body.action, body.feedback, body.roles)
+    return task
+
+
+def _view(task: TaskResult) -> TaskResult:
+    """Tasks still marked running/waiting but unknown to this process were cut off by a restart."""
+    if task.status in ("running", "waiting") and task.id not in TASKS:
+        return task.model_copy(update={"status": "failed", "pending": None})
     return task
 
 
 @app.get("/api/tasks/{tid}", response_model=TaskResult)
 def get_task(tid: str):
+    if tid in TASKS:
+        return TASKS[tid]
     if store.USE_DB:
         found = store.load_task(tid)
         if found is not None:
-            return found
-    if tid not in TASKS:
-        raise HTTPException(404, "task not found")
-    return TASKS[tid]
+            return _view(found)
+    raise HTTPException(404, "task not found")
 
 
 @app.get("/api/tasks", response_model=list[TaskResult])
 def list_tasks():
-    if store.USE_DB:
-        rows = store.load_all_tasks()
-        if rows is not None:
-            return rows
-    return list(TASKS.values())
+    rows = store.load_all_tasks() if store.USE_DB else None
+    if rows is None:
+        return list(TASKS.values())
+    return [TASKS.get(r.id) or _view(r) for r in rows]
 
 
 @app.get("/api/tasks/{tid}/download")

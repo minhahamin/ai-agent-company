@@ -1,0 +1,97 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic: ★
+    - generic: ★
+    - generic: ☁️
+    - generic: 🌙
+    - banner [ref=e4]:
+      - heading "AI Agent Company" [level=1] [ref=e5]
+      - paragraph [ref=e6]: 목표를 입력하면 CEO가 꼭 필요한 역할만 골라 LangGraph로 협업합니다.
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - generic [ref=e12]: agents.exe
+            - generic [ref=e13]:
+              - generic [ref=e14]: _
+              - generic [ref=e15]: □
+              - generic [ref=e16]: ×
+          - generic [ref=e17]:
+            - generic [ref=e18]:
+              - generic [ref=e19]: 👔
+              - generic [ref=e20]:
+                - generic [ref=e21]: CEO
+                - generic [ref=e22]: ceo
+            - generic [ref=e23]:
+              - generic [ref=e24]: 🗺️
+              - generic [ref=e25]:
+                - generic [ref=e26]: Planner
+                - generic [ref=e27]: planner
+            - generic [ref=e28]:
+              - generic [ref=e29]: 💻
+              - generic [ref=e30]:
+                - generic [ref=e31]: Developer
+                - generic [ref=e32]: developer
+            - generic [ref=e33]:
+              - generic [ref=e34]: 🔍
+              - generic [ref=e35]:
+                - generic [ref=e36]: Reviewer
+                - generic [ref=e37]: reviewer
+            - generic [ref=e38]:
+              - generic [ref=e39]: 📣
+              - generic [ref=e40]:
+                - generic [ref=e41]: Reporter
+                - generic [ref=e42]: reporter
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - generic [ref=e45]: history.exe
+            - generic [ref=e46]:
+              - generic [ref=e47]: _
+              - generic [ref=e48]: □
+              - generic [ref=e49]: ×
+          - generic [ref=e50]:
+            - heading "이전 작업" [level=4] [ref=e51]
+            - list [ref=e79]:
+              - listitem [ref=e80] [cursor=pointer]:
+                - generic [ref=e81]: d910d306 · running
+                - generic [ref=e82]: "AI Agent Company: 신규 프로젝트 기획…"
+      - generic [ref=e53]:
+        - generic [ref=e54]:
+          - generic [ref=e55]:
+            - generic [ref=e56]: goal.txt - notepad
+            - generic [ref=e57]:
+              - generic [ref=e58]: _
+              - generic [ref=e59]: □
+              - generic [ref=e60]: ×
+          - generic [ref=e61]:
+            - heading "① 목표 입력" [level=4] [ref=e62]
+            - 'textbox "예: AI Agent Company 소개 글 작성" [ref=e63]': "AI Agent Company: 신규 프로젝트 기획안 작성 타자 테"
+            - generic [ref=e64]:
+              - checkbox "단계별 승인 (CEO 계획 직후 · Reviewer 판정 직후에 멈춤)" [checked] [ref=e65]
+              - text: 단계별 승인 (CEO 계획 직후 · Reviewer 판정 직후에 멈춤)
+            - button "에이전트 협업 중..." [disabled] [ref=e83]
+        - generic [ref=e84]:
+          - generic [ref=e85]:
+            - generic [ref=e86]: timeline.log
+            - generic [ref=e87]:
+              - generic [ref=e88]: _
+              - generic [ref=e89]: □
+              - generic [ref=e90]: ×
+          - generic [ref=e91]:
+            - heading "② 협업 타임라인" [level=4] [ref=e92]
+            - list
+        - generic [ref=e68]:
+          - generic [ref=e69]:
+            - generic [ref=e70]: result.exe
+            - generic [ref=e71]:
+              - generic [ref=e72]: _
+              - generic [ref=e73]: □
+              - generic [ref=e74]: ×
+          - generic [ref=e75]:
+            - heading "③ 협업 결과" [level=4] [ref=e76]
+            - paragraph [ref=e93]:
+              - text: task d910d306 ·
+              - generic [ref=e94]: 검토중
+              - text: · 0 steps
+            - paragraph [ref=e95]: ⏳ 에이전트가 작업 중이에요…
+  - alert [ref=e78]
