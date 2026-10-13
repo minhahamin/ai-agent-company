@@ -8,6 +8,30 @@ type Agent = { id: string; name: string; emoji: string; description: string };
 type Event = { agent: string; name: string; output: string; step: number };
 type Task = { id: string; goal: string; status: string; events: Event[]; final_report: string; approved: boolean };
 
+const Win = ({ title, lav, children }: { title: string; lav?: boolean; children: React.ReactNode }) => (
+  <div className={`win ${lav ? "lav" : ""}`}>
+    <div className="win-bar">
+      <span>{title}</span>
+      <span className="win-btns"><i>_</i><i>□</i><i>×</i></span>
+    </div>
+    <div className="win-body">{children}</div>
+  </div>
+);
+
+const AgentList = ({ agents }: { agents: Agent[] }) => (
+  <>
+    {agents.map((a) => (
+      <div className="agent" key={a.id}>
+        <div className="agent-emoji">{a.emoji}</div>
+        <div className="agent-info">
+          <div className="name">{a.name}</div>
+          <div className="role">{a.id}</div>
+        </div>
+      </div>
+    ))}
+  </>
+);
+
 export default function Page() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [goal, setGoal] = useState("AI Agent Company: 신규 프로젝트 기획안 작성");
@@ -57,30 +81,6 @@ export default function Page() {
 
   const ev = task?.events?.[active];
 
-  const Win = ({ title, lav, children }: { title: string; lav?: boolean; children: React.ReactNode }) => (
-    <div className={`win ${lav ? "lav" : ""}`}>
-      <div className="win-bar">
-        <span>{title}</span>
-        <span className="win-btns"><i>_</i><i>□</i><i>×</i></span>
-      </div>
-      <div className="win-body">{children}</div>
-    </div>
-  );
-
-  const AgentList = () => (
-    <>
-      {agents.map((a) => (
-        <div className="agent" key={a.id}>
-          <div className="agent-emoji">{a.emoji}</div>
-          <div className="agent-info">
-            <div className="name">{a.name}</div>
-            <div className="role">{a.id}</div>
-          </div>
-        </div>
-      ))}
-    </>
-  );
-
   const emojiOf = (id: string) => agents.find((a) => a.id === id)?.emoji || "✦";
 
   return (
@@ -110,14 +110,13 @@ export default function Page() {
       <header className="hero">
         <h1 className="title">AI Agent Company</h1>
         <p className="subtitle">목표를 입력하면 CEO·Planner·Developer·Reviewer·Reporter가 LangGraph로 협업합니다.</p>
-        <span className="badge">✦ 실제 LLM 연동 ✦</span>
       </header>
 
       <section className="stage">
         <div className="grid">
           <div className="col">
             <Win title="agents.exe">
-              <AgentList />
+              <AgentList agents={agents} />
             </Win>
             <Win title="history.exe" lav>
               <h4>이전 작업</h4>
