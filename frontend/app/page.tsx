@@ -109,7 +109,7 @@ export default function Page() {
 
       <header className="hero">
         <h1 className="title">AI Agent Company</h1>
-        <p className="subtitle">목표를 입력하면 CEO·Planner·Developer·Reviewer·Reporter가 LangGraph로 협업합니다.</p>
+        <p className="subtitle">목표를 입력하면 CEO가 꼭 필요한 역할만 골라 LangGraph로 협업합니다.</p>
       </header>
 
       <section className="stage">
@@ -186,6 +186,8 @@ export default function Page() {
                   <h4>📣 최종 보고서</h4>
                   <pre className="output">{task.final_report}</pre>
                   <button className="btn" onClick={() => window.print()}>📄 보고서 PDF 다운로드</button>
+                  <div style={{ height: 8 }} />
+                  <a className="btn" href={`${API}/api/tasks/${task.id}/download`} style={{ display: "inline-block", textDecoration: "none" }}>📦 산출물 다운로드 (zip)</a>
                 </>
               )}
             </Win>

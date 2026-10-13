@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .schemas import TaskCreate, TaskResult, AgentEvent, AgentInfo
@@ -13,6 +13,7 @@ from .graph import run_company
 from .llm import get_mode
 from . import llm as llm_state
 from . import db as store
+from .artifacts import build_zip
 
 app = FastAPI(title="AI Agent Company", version="0.1.0")
 
@@ -93,3 +94,13 @@ def list_tasks():
         if rows is not None:
             return rows
     return list(TASKS.values())
+
+
+@app.get("/api/tasks/{tid}/download")
+def download_task(tid: str):
+    task = get_task(tid)
+    return Response(
+        build_zip(task),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="task-{tid}.zip"'},
+    )
