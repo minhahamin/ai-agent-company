@@ -61,15 +61,20 @@ def parse_roles(text: str) -> List[str]:
     return list(OPTIONAL_ROLES) if roles is None else roles
 
 
-def _ask_roles(goal: str, ceo_text: str) -> Optional[List[str]]:
-    """Free models often forget the ROLES line; ask once more with a tiny, single-purpose prompt."""
+def _ask_roles(goal: str, ceo_text: str, user_note: str = "") -> Optional[List[str]]:
+    """Role selection is its own small call: asked inside the long CEO answer, free models copy the example."""
+    note = f"\n사용자 요청(최우선): {user_note}" if user_note else ""
     out = chat(
-        f"목표: {goal}\n\n계획:\n{ceo_text[:1500]}\n\n"
-        "이 목표를 끝내는 데 꼭 필요한 역할만 고르세요. 선택지: planner(일정/계획 수립), "
-        "developer(코드나 긴 문서 산출물 작성), reviewer(산출물 품질 검토; developer가 있을 때만). "
-        "비교·추천·요약처럼 코드나 문서 산출물이 필요 없는 일은 developer와 reviewer를 넣지 마세요. "
-        "다른 설명 없이 한 줄로만 답하세요. 예: `ROLES: planner` 또는 `ROLES: planner, developer, reviewer` 또는 `ROLES: none`",
-        system="You classify which roles a task needs. Reply with exactly one line starting with ROLES:.",
+        f"목표: {goal}{note}\n\n계획:\n{ceo_text[:1500]}\n\n"
+        "이 목표를 끝내는 데 꼭 필요한 역할만 고르세요.\n"
+        "- planner: 일정·단계가 있는 계획 수립이 목표의 핵심일 때만.\n"
+        "- developer: 코드나 긴 문서(가이드, 소개글, 보고서 본문)를 새로 써야 할 때만.\n"
+        "- reviewer: developer가 만든 산출물을 검토해야 할 때만 (developer 없이는 불가).\n"
+        "비교·추천·질문 답변·요약·아이디어처럼 짧은 답으로 끝나는 일은 아무 역할도 필요 없습니다.\n"
+        "예시: '맛집 3곳 비교해서 추천' -> ROLES: none / '한 달 학습 계획 세우기' -> ROLES: planner / "
+        "'자바스크립트 정렬 함수 작성' -> ROLES: developer, reviewer / '앱 출시 계획과 구현 코드' -> ROLES: planner, developer, reviewer\n"
+        "설명 없이 `ROLES: ...` 한 줄로만 답하세요.",
+        system="You decide which roles a task needs. Reply with exactly one line starting with ROLES:. Prefer fewer roles.",
     )
     return find_roles(out)
 
@@ -88,13 +93,14 @@ def ceo_node(state: CompanyState):
     )
     out = chat(
         f"사용자 목표: {goal}{prev}\n이 목표를 3~5개의 하위 작업으로 분해하고 완료기준을 정하세요.\n"
-        "그리고 이 목표에 꼭 필요한 역할만 골라, 마지막 줄에 정확히 `ROLES: planner, developer, reviewer` 형식으로 적으세요 "
-        "(선택지: planner, developer, reviewer. 불필요한 역할은 빼세요. 예: 코드/문서 산출물이 필요 없으면 developer와 reviewer 제외).",
+        "역할 배정은 따로 하니, 하위 작업과 완료기준만 간결하게 쓰세요.",
         system=ROLE_MAP["ceo"]["system"],
     )
-    roles = find_roles(out)
-    if roles is None and not is_mock():
-        roles = _ask_roles(goal, out)
+    roles = None
+    if not is_mock():
+        roles = _ask_roles(goal, out, fb)
+        if roles is None:  # [] is a valid answer ("no optional roles"), so don't use `or`
+            roles = find_roles(out)
     note = ""
     if roles is None:
         roles = list(OPTIONAL_ROLES)
