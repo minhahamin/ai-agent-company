@@ -6,6 +6,7 @@ Set OPENROUTER_MODELS to override the full cascade, e.g.:
   OPENROUTER_MODELS="meta-llama/llama-3.3-70b-instruct:free,openai/gpt-4o-mini"
 """
 import os
+from datetime import datetime, timedelta, timezone
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -62,11 +63,18 @@ def _chat_once(model: str, prompt: str, system: str, openrouter: bool) -> str:
     return content if isinstance(content, str) else str(content)
 
 
+def _today_line() -> str:
+    """Models don't know the date and invent old ones (e.g. 2023) in schedules."""
+    now = datetime.now(timezone(timedelta(hours=9)))  # KST, fixed offset: no tzdata needed
+    return f"오늘 날짜는 {now:%Y-%m-%d}({'월화수목금토일'[now.weekday()]}요일)입니다. 일정·날짜를 쓸 때는 반드시 이 날짜를 기준으로 하세요."
+
+
 def chat(prompt: str, system: str = "") -> str:
     """Try free models first, fall back to cheap paid, finally mock."""
     global last_model
     if is_mock():
         return _mock_chat(prompt, system)
+    system = f"{_today_line()}\n{system}" if system else _today_line()
     mode = get_mode()
     if mode == "openai":
         models = [os.getenv("OPENAI_MODEL", "gpt-4o-mini")]
